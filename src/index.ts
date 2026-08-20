@@ -1,0 +1,62 @@
+import { serve } from "@hono/node-server";
+import { Hono } from "hono";
+import { cors } from "hono/cors";
+import { logger as honoLogger } from "hono/logger";
+import { HTTPException } from "hono/http-exception";
+import { logger } from "./utils/logger.js";
+import { Config } from "./config/index.js";
+
+const app = new Hono({ strict: false }).basePath("/api/v1");
+
+app.use("*", honoLogger());
+app.use(
+  "*",
+  cors({
+    origin: ["http://localhost:3000", Config.frontendURL],
+    credentials: true,
+  }),
+);
+
+app.get("/", (c) => {
+  return c.text("Hello, everybody!");
+});
+
+// global error handler
+app.onError((err, c) => {
+  if (err instanceof HTTPException) {
+    logger.warn({ err, path: c.req.path }, err.message);
+    return c.json(
+      {
+        success: false,
+        message: err.message,
+        status: err.status,
+      },
+      err.status,
+    );
+  }
+
+  logger.error({ err, path: c.req.path }, "Unhandled error");
+  return c.json(
+    {
+      success: false,
+      message:
+        process.env.NODE_ENV === "production"
+          ? "Internal Server Error"
+          : err.message || "Internal Server Error",
+      status: 500,
+    },
+    500,
+  );
+});
+
+export default app;
+
+serve(
+  {
+    fetch: app.fetch,
+    port: Config.port,
+  },
+  (info) => {
+    console.log(`Server is running on http://localhost:${info.port}`);
+  },
+);
