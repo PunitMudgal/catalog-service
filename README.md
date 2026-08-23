@@ -31,6 +31,11 @@ and `/api/v1/catalog/variants/:id`. Admins and managers can create or edit varia
 staff can change availability, and only admins can delete variants. A product must
 always retain at least one variant.
 
+Add-on endpoints are available under `/api/v1/catalog/add-ons` and
+`/api/v1/catalog/products/:productId/add-ons/:addOnId`. Admins and managers can
+create, edit, attach, and detach add-ons; only admins can delete an add-on.
+Deleting an add-on also removes its product attachments.
+
 ## API documentation
 
 Start the service with `pnpm run dev`, then open
