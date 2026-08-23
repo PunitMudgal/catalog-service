@@ -12,6 +12,7 @@ tags:
   - name: Products
   - name: Variants
   - name: Add-ons
+  - name: Public Menu
 paths:
   /:
     get:
@@ -472,6 +473,46 @@ paths:
       responses:
         "204": { description: Add-on detached }
         "404": { $ref: "#/components/responses/NotFound" }
+  /{tenantId}/menu:
+    parameters:
+      - name: tenantId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Public Menu]
+      summary: Get the public tenant menu
+      description: Returns active categories with active products, variants, and add-ons.
+      responses:
+        "200":
+          description: Public menu retrieved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuResponse"
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /{tenantId}/products/{productId}:
+    parameters:
+      - name: tenantId
+        in: path
+        required: true
+        schema: { type: string }
+      - name: productId
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Public Menu]
+      summary: Get a public product detail
+      description: Returns an active product with active variants and add-ons.
+      responses:
+        "200":
+          description: Product retrieved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
 components:
   securitySchemes:
     bearerAuth:
@@ -628,6 +669,27 @@ components:
         data:
           type: array
           items: { $ref: "#/components/schemas/Product" }
+        status: { type: integer, const: 200 }
+    MenuCategory:
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/Category"
+        - type: object
+          properties:
+            products:
+              type: array
+              items: { $ref: "#/components/schemas/Product" }
+            children:
+              type: array
+              items: { $ref: "#/components/schemas/MenuCategory" }
+    MenuResponse:
+      type: object
+      properties:
+        success: { type: boolean, const: true }
+        message: { type: string }
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/MenuCategory" }
         status: { type: integer, const: 200 }
     CreateVariant:
       type: object

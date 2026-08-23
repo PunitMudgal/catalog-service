@@ -10,6 +10,7 @@ import { openApiDocument, swaggerUi } from "./docs/swagger.js";
 import productRouter from "./product/product.router.js";
 import variantRouter from "./variant/variant.router.js";
 import addOnRouter from "./add-on/add-on.router.js";
+import menuRouter from "./menu/menu.router.js";
 
 const app = new Hono({ strict: false }).basePath("/api/v1/catalog");
 
@@ -32,6 +33,7 @@ app.route("/categories", categoryRouter);
 app.route("/products", productRouter);
 app.route("/", variantRouter);
 app.route("/", addOnRouter);
+app.route("/", menuRouter);
 
 // global error handler
 app.onError((err, c) => {

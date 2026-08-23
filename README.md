@@ -36,6 +36,13 @@ Add-on endpoints are available under `/api/v1/catalog/add-ons` and
 create, edit, attach, and detach add-ons; only admins can delete an add-on.
 Deleting an add-on also removes its product attachments.
 
+Public menu endpoints:
+
+- `GET /api/v1/catalog/:tenantId/menu` returns the nested active menu and is cacheable.
+- `GET /api/v1/catalog/:tenantId/products/:productId` returns active product details.
+
+These endpoints do not require authentication.
+
 ## API documentation
 
 Start the service with `pnpm run dev`, then open
