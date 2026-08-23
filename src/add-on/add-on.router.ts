@@ -7,18 +7,24 @@ export const addOnRouter = new Hono();
 const controller = new AddOnController();
 const manageAddOns = requireRoles("admin", "manager");
 
-addOnRouter.use("*", authenticateAccessToken);
-addOnRouter.get("/add-ons", manageAddOns, controller.list);
-addOnRouter.post("/add-ons", manageAddOns, controller.create);
-addOnRouter.patch("/add-ons/:id", manageAddOns, controller.update);
-addOnRouter.delete("/add-ons/:id", requireRoles("admin"), controller.remove);
+addOnRouter.get("/add-ons", authenticateAccessToken, manageAddOns, controller.list);
+addOnRouter.post("/add-ons", authenticateAccessToken, manageAddOns, controller.create);
+addOnRouter.patch("/add-ons/:id", authenticateAccessToken, manageAddOns, controller.update);
+addOnRouter.delete(
+  "/add-ons/:id",
+  authenticateAccessToken,
+  requireRoles("admin"),
+  controller.remove,
+);
 addOnRouter.post(
   "/products/:productId/add-ons/:addOnId",
+  authenticateAccessToken,
   manageAddOns,
   controller.attach,
 );
 addOnRouter.delete(
   "/products/:productId/add-ons/:addOnId",
+  authenticateAccessToken,
   manageAddOns,
   controller.detach,
 );

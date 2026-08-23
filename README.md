@@ -39,7 +39,8 @@ Deleting an add-on also removes its product attachments.
 Public menu endpoints:
 
 - `GET /api/v1/catalog/:tenantId/menu` returns the nested active menu and is cacheable.
-- `GET /api/v1/catalog/:tenantId/products/:productId` returns active product details.
+- `GET /api/v1/catalog/:tenantId/products/:productId` returns active product details,
+  including variants and add-ons.
 
 These endpoints do not require authentication.
 

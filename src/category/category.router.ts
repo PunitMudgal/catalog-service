@@ -6,14 +6,18 @@ import { requireRoles } from "../middleware/require-roles.js";
 export const categoryRouter = new Hono();
 const controller = new CategoryController();
 
-categoryRouter.use("*", authenticateAccessToken);
-categoryRouter.use("*", requireRoles("admin", "manager"));
+const manageCategories = requireRoles("admin", "manager");
 
-categoryRouter.get("/", controller.list);
-categoryRouter.get("/:id", controller.getById);
-categoryRouter.post("/", controller.create);
-categoryRouter.patch("/:id", controller.update);
-categoryRouter.patch("/:id/availability", controller.setAvailability);
-categoryRouter.delete("/:id", controller.remove);
+categoryRouter.get("/", authenticateAccessToken, manageCategories, controller.list);
+categoryRouter.get("/:id", authenticateAccessToken, manageCategories, controller.getById);
+categoryRouter.post("/", authenticateAccessToken, manageCategories, controller.create);
+categoryRouter.patch("/:id", authenticateAccessToken, manageCategories, controller.update);
+categoryRouter.patch(
+  "/:id/availability",
+  authenticateAccessToken,
+  manageCategories,
+  controller.setAvailability,
+);
+categoryRouter.delete("/:id", authenticateAccessToken, manageCategories, controller.remove);
 
 export default categoryRouter;

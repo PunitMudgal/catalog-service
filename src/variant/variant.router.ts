@@ -7,20 +7,27 @@ export const variantRouter = new Hono();
 const controller = new VariantController();
 const manageVariants = requireRoles("admin", "manager");
 
-variantRouter.use("*", authenticateAccessToken);
 variantRouter.post(
   "/products/:productId/variants",
+  authenticateAccessToken,
   manageVariants,
   controller.create,
 );
-variantRouter.patch("/variants/:id", manageVariants, controller.update);
+variantRouter.patch(
+  "/variants/:id",
+  authenticateAccessToken,
+  manageVariants,
+  controller.update,
+);
 variantRouter.patch(
   "/variants/:id/availability",
+  authenticateAccessToken,
   requireRoles("admin", "manager", "staff"),
   controller.setAvailability,
 );
 variantRouter.delete(
   "/variants/:id",
+  authenticateAccessToken,
   requireRoles("admin"),
   controller.remove,
 );

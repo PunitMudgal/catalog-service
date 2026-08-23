@@ -18,7 +18,12 @@ app.use("*", honoLogger());
 app.use(
   "*",
   cors({
-    origin: ["http://localhost:3000", Config.frontendURL],
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:8000",
+      "http://localhost:8001",
+      Config.frontendURL,
+    ],
     credentials: true,
   }),
 );

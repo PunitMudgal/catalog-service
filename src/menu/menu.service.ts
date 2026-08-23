@@ -13,14 +13,13 @@ export class PublicMenuNotFoundError extends Error {}
 
 type MenuProduct = typeof products.$inferSelect & {
   variants: (typeof productVariants.$inferSelect)[];
-  addOns: (typeof addOns.$inferSelect)[];
 };
 
 export class MenuService {
   constructor(private readonly database: Database) {}
 
   async getMenu(tenantId: string) {
-    const [activeCategories, activeProducts, activeVariants, activeAddOnRows] =
+    const [activeCategories, activeProducts, activeVariants] =
       await Promise.all([
         this.database
           .select()
@@ -51,17 +50,11 @@ export class MenuService {
             ),
           )
           .orderBy(productVariants.displayOrder, productVariants.label),
-        this.database
-          .select({ productId: productAddOns.productId, addOn: addOns })
-          .from(productAddOns)
-          .innerJoin(addOns, eq(productAddOns.addOnId, addOns.id))
-          .where(and(eq(addOns.tenantId, tenantId), eq(addOns.isActive, true))),
       ]);
 
     const categoryIds = new Set(activeCategories.map((category) => category.id));
     const productsByCategory = new Map<string, MenuProduct[]>();
     const variantsByProduct = new Map<string, (typeof productVariants.$inferSelect)[]>();
-    const addOnsByProduct = new Map<string, (typeof addOns.$inferSelect)[]>();
 
     for (const row of activeVariants) {
       const variants = variantsByProduct.get(row.product_variants.productId) ?? [];
@@ -69,18 +62,11 @@ export class MenuService {
       variantsByProduct.set(row.product_variants.productId, variants);
     }
 
-    for (const row of activeAddOnRows) {
-      const attached = addOnsByProduct.get(row.productId) ?? [];
-      attached.push(row.addOn);
-      addOnsByProduct.set(row.productId, attached);
-    }
-
     for (const product of activeProducts) {
       if (!categoryIds.has(product.categoryId)) continue;
       const productWithDetails = {
         ...product,
         variants: variantsByProduct.get(product.id) ?? [],
-        addOns: addOnsByProduct.get(product.id) ?? [],
       };
       const productList = productsByCategory.get(product.categoryId) ?? [];
       productList.push(productWithDetails);

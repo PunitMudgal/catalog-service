@@ -4,8 +4,8 @@ info:
   version: 1.0.0
   description: Tenant-scoped category management API.
 servers:
-  - url: http://localhost:3000/api/v1/catalog
-    description: Local development
+  - url: /api/v1/catalog
+    description: Current catalog service host
 tags:
   - name: Catalog
   - name: Categories
@@ -678,10 +678,27 @@ components:
           properties:
             products:
               type: array
-              items: { $ref: "#/components/schemas/Product" }
+              items: { $ref: "#/components/schemas/MenuProduct" }
             children:
               type: array
               items: { $ref: "#/components/schemas/MenuCategory" }
+    MenuProduct:
+      type: object
+      description: Product summary returned in the menu listing. Add-ons are available on product detail.
+      properties:
+        id: { type: string }
+        tenantId: { type: string }
+        categoryId: { type: string }
+        name: { type: string, maxLength: 150 }
+        description: { type: [string, "null"] }
+        imageUrl: { type: [string, "null"], format: uri }
+        isVeg: { type: [boolean, "null"] }
+        isActive: { type: boolean }
+        displayOrder: { type: integer }
+        attributes: { type: object }
+        variants:
+          type: array
+          items: { $ref: "#/components/schemas/Variant" }
     MenuResponse:
       type: object
       properties:
