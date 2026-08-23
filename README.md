@@ -26,6 +26,11 @@ the product, its variants, and attached add-ons. Product deletion is a soft dele
 Admins and managers can manage products, while staff can also use only the
 availability endpoint.
 
+Variant management endpoints are available under `/api/v1/catalog/products/:productId/variants`
+and `/api/v1/catalog/variants/:id`. Admins and managers can create or edit variants,
+staff can change availability, and only admins can delete variants. A product must
+always retain at least one variant.
+
 ## API documentation
 
 Start the service with `pnpm run dev`, then open

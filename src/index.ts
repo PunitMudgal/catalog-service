@@ -8,6 +8,7 @@ import { Config } from "./config/index.js";
 import categoryRouter from "./category/category.router.js";
 import { openApiDocument, swaggerUi } from "./docs/swagger.js";
 import productRouter from "./product/product.router.js";
+import variantRouter from "./variant/variant.router.js";
 
 const app = new Hono({ strict: false }).basePath("/api/v1/catalog");
 
@@ -28,6 +29,7 @@ app.get("/openapi.yaml", openApiDocument);
 app.get("/docs", swaggerUi);
 app.route("/categories", categoryRouter);
 app.route("/products", productRouter);
+app.route("/", variantRouter);
 
 // global error handler
 app.onError((err, c) => {
