@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { categories, products } from "../db/schema.js";
 import type { CreateCategoryInput, UpdateCategoryInput } from "./category.validation.js";
 
@@ -25,7 +25,7 @@ export class CategoryService {
     return this.database
       .select()
       .from(categories)
-      .where(eq(categories.tenantId, tenantId))
+      .where(and(eq(categories.tenantId, tenantId), isNull(categories.deletedAt)))
       .orderBy(categories.displayOrder, categories.name);
   }
 
@@ -33,7 +33,13 @@ export class CategoryService {
     const [category] = await this.database
       .select()
       .from(categories)
-      .where(and(eq(categories.tenantId, tenantId), eq(categories.id, id)))
+      .where(
+        and(
+          eq(categories.tenantId, tenantId),
+          eq(categories.id, id),
+          isNull(categories.deletedAt),
+        ),
+      )
       .limit(1);
 
     if (!category) throw new CategoryNotFoundError("Category not found");
@@ -101,7 +107,13 @@ export class CategoryService {
       await tx
         .update(products)
         .set({ isActive, updatedAt: new Date() })
-        .where(and(eq(products.tenantId, tenantId), inArray(products.categoryId, ids)));
+        .where(
+          and(
+            eq(products.tenantId, tenantId),
+            inArray(products.categoryId, ids),
+            isNull(products.deletedAt),
+          ),
+        );
       const [category] = await tx
         .select()
         .from(categories)
@@ -116,20 +128,39 @@ export class CategoryService {
     const [child] = await this.database
       .select({ id: categories.id })
       .from(categories)
-      .where(and(eq(categories.tenantId, tenantId), eq(categories.parentId, id)))
+      .where(
+        and(
+          eq(categories.tenantId, tenantId),
+          eq(categories.parentId, id),
+          isNull(categories.deletedAt),
+        ),
+      )
       .limit(1);
     if (child) throw new CategoryConflictError("Category must not have child categories");
 
     const [product] = await this.database
       .select({ id: products.id })
       .from(products)
-      .where(and(eq(products.tenantId, tenantId), eq(products.categoryId, id)))
+      .where(
+        and(
+          eq(products.tenantId, tenantId),
+          eq(products.categoryId, id),
+          isNull(products.deletedAt),
+        ),
+      )
       .limit(1);
     if (product) throw new CategoryConflictError("Category must not contain products");
 
     await this.database
-      .delete(categories)
-      .where(and(eq(categories.tenantId, tenantId), eq(categories.id, id)));
+      .update(categories)
+      .set({ isActive: false, deletedAt: new Date(), updatedAt: new Date() })
+      .where(
+        and(
+          eq(categories.tenantId, tenantId),
+          eq(categories.id, id),
+          isNull(categories.deletedAt),
+        ),
+      );
   }
 
   private async assertParent(tenantId: string, parentId: string) {
@@ -157,7 +188,13 @@ export class CategoryService {
       const children = await this.database
         .select({ id: categories.id })
         .from(categories)
-        .where(and(eq(categories.tenantId, tenantId), inArray(categories.parentId, ids)));
+        .where(
+          and(
+            eq(categories.tenantId, tenantId),
+            inArray(categories.parentId, ids),
+            isNull(categories.deletedAt),
+          ),
+        );
       if (children.some((child) => child.id === candidateId)) return true;
       ids = children.map((child) => child.id);
     }
@@ -172,7 +209,13 @@ export class CategoryService {
       const children = await this.database
         .select({ id: categories.id })
         .from(categories)
-        .where(and(eq(categories.tenantId, tenantId), inArray(categories.parentId, frontier)));
+        .where(
+          and(
+            eq(categories.tenantId, tenantId),
+            inArray(categories.parentId, frontier),
+            isNull(categories.deletedAt),
+          ),
+        );
       frontier = children
         .map((child) => child.id)
         .filter((id) => !visited.has(id));

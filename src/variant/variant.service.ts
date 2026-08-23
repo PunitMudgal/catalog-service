@@ -17,6 +17,7 @@ export class VariantService {
   async create(tenantId: string, productId: string, input: CreateVariantInput) {
     await this.findProduct(tenantId, productId);
     await this.ensureLabelIsAvailable(productId, input.label);
+    if (input.isDefault) await this.ensureDefaultIsAvailable(productId);
 
     const [variant] = await this.database
       .insert(productVariants)
@@ -46,7 +47,12 @@ export class VariantService {
         ...(input.price === undefined ? {} : { price: String(input.price) }),
         updatedAt: new Date(),
       })
-      .where(eq(productVariants.id, id))
+      .where(
+        and(
+          eq(productVariants.id, id),
+          isNull(productVariants.deletedAt),
+        ),
+      )
       .returning();
 
     if (!variant) throw new VariantNotFoundError("Variant not found");
@@ -58,7 +64,12 @@ export class VariantService {
     const [variant] = await this.database
       .update(productVariants)
       .set({ isActive, updatedAt: new Date() })
-      .where(eq(productVariants.id, id))
+      .where(
+        and(
+          eq(productVariants.id, id),
+          isNull(productVariants.deletedAt),
+        ),
+      )
       .returning();
 
     if (!variant) throw new VariantNotFoundError("Variant not found");
@@ -70,15 +81,26 @@ export class VariantService {
     const allVariants = await this.database
       .select({ id: productVariants.id })
       .from(productVariants)
-      .where(eq(productVariants.productId, variant.productId));
+      .where(
+        and(
+          eq(productVariants.productId, variant.productId),
+          isNull(productVariants.deletedAt),
+        ),
+      );
 
     if (allVariants.length <= 1) {
       throw new VariantConflictError("A product must have at least one variant");
     }
 
     await this.database
-      .delete(productVariants)
-      .where(eq(productVariants.id, id));
+      .update(productVariants)
+      .set({ isActive: false, deletedAt: new Date(), updatedAt: new Date() })
+      .where(
+        and(
+          eq(productVariants.id, id),
+          isNull(productVariants.deletedAt),
+        ),
+      );
   }
 
   private async findProduct(tenantId: string, productId: string) {
@@ -90,6 +112,7 @@ export class VariantService {
           eq(products.id, productId),
           eq(products.tenantId, tenantId),
           isNull(products.deletedAt),
+          isNull(productVariants.deletedAt),
         ),
       )
       .limit(1);
@@ -127,6 +150,7 @@ export class VariantService {
       .where(
         and(
           eq(productVariants.productId, productId),
+          isNull(productVariants.deletedAt),
           sql`lower(${productVariants.label}) = lower(${label})`,
         ),
       )
@@ -134,6 +158,24 @@ export class VariantService {
 
     if (existing && existing.id !== excludeId) {
       throw new VariantConflictError("A variant with this label already exists");
+    }
+  }
+
+  private async ensureDefaultIsAvailable(productId: string) {
+    const [defaultVariant] = await this.database
+      .select({ id: productVariants.id })
+      .from(productVariants)
+      .where(
+        and(
+          eq(productVariants.productId, productId),
+          eq(productVariants.isDefault, true),
+          isNull(productVariants.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (defaultVariant) {
+      throw new VariantConflictError("A product can have only one default variant");
     }
   }
 }

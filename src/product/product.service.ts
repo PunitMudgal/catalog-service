@@ -37,13 +37,24 @@ export class ProductService {
       this.database
         .select()
         .from(productVariants)
-        .where(eq(productVariants.productId, id))
+        .where(
+          and(
+            eq(productVariants.productId, id),
+            isNull(productVariants.deletedAt),
+          ),
+        )
         .orderBy(productVariants.displayOrder, productVariants.label),
       this.database
         .select({ addOn: addOns })
         .from(productAddOns)
         .innerJoin(addOns, eq(productAddOns.addOnId, addOns.id))
-        .where(and(eq(productAddOns.productId, id), eq(addOns.tenantId, tenantId))),
+        .where(
+          and(
+            eq(productAddOns.productId, id),
+            eq(addOns.tenantId, tenantId),
+            isNull(addOns.deletedAt),
+          ),
+        ),
     ]);
 
     return {
@@ -118,7 +129,13 @@ export class ProductService {
         ...(input.isVeg === undefined ? {} : { isVeg: input.isVeg }),
         updatedAt: new Date(),
       })
-      .where(and(eq(products.tenantId, tenantId), eq(products.id, id)))
+      .where(
+        and(
+          eq(products.tenantId, tenantId),
+          eq(products.id, id),
+          isNull(products.deletedAt),
+        ),
+      )
       .returning();
 
     if (!product) throw new ProductNotFoundError("Product not found");
@@ -130,7 +147,13 @@ export class ProductService {
     const [product] = await this.database
       .update(products)
       .set({ isActive, updatedAt: new Date() })
-      .where(and(eq(products.tenantId, tenantId), eq(products.id, id)))
+      .where(
+        and(
+          eq(products.tenantId, tenantId),
+          eq(products.id, id),
+          isNull(products.deletedAt),
+        ),
+      )
       .returning();
 
     if (!product) throw new ProductNotFoundError("Product not found");
@@ -142,7 +165,13 @@ export class ProductService {
     const [product] = await this.database
       .update(products)
       .set({ isActive: false, deletedAt: new Date(), updatedAt: new Date() })
-      .where(and(eq(products.tenantId, tenantId), eq(products.id, id)))
+      .where(
+        and(
+          eq(products.tenantId, tenantId),
+          eq(products.id, id),
+          isNull(products.deletedAt),
+        ),
+      )
       .returning({ id: products.id });
 
     if (!product) throw new ProductNotFoundError("Product not found");
@@ -184,7 +213,13 @@ export class ProductService {
     const selectedAddOns = await this.database
       .select()
       .from(addOns)
-      .where(and(eq(addOns.tenantId, tenantId), inArray(addOns.id, addOnIds)));
+      .where(
+        and(
+          eq(addOns.tenantId, tenantId),
+          inArray(addOns.id, addOnIds),
+          isNull(addOns.deletedAt),
+        ),
+      );
 
     if (selectedAddOns.length !== addOnIds.length) {
       throw new ProductValidationError("One or more add-ons do not belong to this tenant");

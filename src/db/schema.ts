@@ -28,6 +28,7 @@ export const categories = pgTable(
     isActive: boolean("is_active").default(true).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
   },
   (t) => [
     unique("tenant_category_slug_unique").on(t.tenantId, t.slug),
@@ -84,6 +85,7 @@ export const productVariants = pgTable(
     displayOrder: integer("display_order").default(0).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
+    deletedAt: timestamp("deleted_at"),
   },
   (t) => [
     unique("product_variant_label_unique").on(t.productId, t.label),
@@ -101,6 +103,7 @@ export const addOns = pgTable("add_ons", {
   name: varchar("name", { length: 100 }).notNull(),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  deletedAt: timestamp("deleted_at"),
 });
 
 export const productAddOns = pgTable(

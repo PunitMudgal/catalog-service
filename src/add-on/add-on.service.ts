@@ -22,7 +22,7 @@ export class AddOnService {
     return this.database
       .select()
       .from(addOns)
-      .where(eq(addOns.tenantId, tenantId))
+      .where(and(eq(addOns.tenantId, tenantId), isNull(addOns.deletedAt)))
       .orderBy(addOns.name);
   }
 
@@ -49,7 +49,13 @@ export class AddOnService {
         ...(input.name === undefined ? {} : { name: input.name }),
         ...(input.price === undefined ? {} : { price: String(input.price) }),
       })
-      .where(and(eq(addOns.id, id), eq(addOns.tenantId, tenantId)))
+      .where(
+        and(
+          eq(addOns.id, id),
+          eq(addOns.tenantId, tenantId),
+          isNull(addOns.deletedAt),
+        ),
+      )
       .returning();
 
     if (!addOn) throw new AddOnNotFoundError("Add-on not found");
@@ -59,8 +65,15 @@ export class AddOnService {
   async remove(tenantId: string, id: string) {
     await this.findAddOn(tenantId, id);
     await this.database
-      .delete(addOns)
-      .where(and(eq(addOns.id, id), eq(addOns.tenantId, tenantId)));
+      .update(addOns)
+      .set({ isActive: false, deletedAt: new Date() })
+      .where(
+        and(
+          eq(addOns.id, id),
+          eq(addOns.tenantId, tenantId),
+          isNull(addOns.deletedAt),
+        ),
+      );
   }
 
   async attach(tenantId: string, productId: string, addOnId: string) {
@@ -102,7 +115,13 @@ export class AddOnService {
     const [addOn] = await this.database
       .select()
       .from(addOns)
-      .where(and(eq(addOns.id, id), eq(addOns.tenantId, tenantId)))
+      .where(
+        and(
+          eq(addOns.id, id),
+          eq(addOns.tenantId, tenantId),
+          isNull(addOns.deletedAt),
+        ),
+      )
       .limit(1);
 
     if (!addOn) throw new AddOnNotFoundError("Add-on not found");

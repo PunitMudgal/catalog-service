@@ -117,8 +117,8 @@ paths:
           $ref: "#/components/responses/Conflict"
     delete:
       tags: [Categories]
-      summary: Delete an empty category
-      description: Deletes only when the category has no products or child categories.
+      summary: Soft-delete an empty category
+      description: Soft-deletes the category only when it has no active products or child categories.
       security:
         - bearerAuth: []
         - accessCookie: []
@@ -332,8 +332,8 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
     delete:
       tags: [Variants]
-      summary: Delete a variant
-      description: Only admins can delete variants, and the final variant cannot be deleted.
+      summary: Soft-delete a variant
+      description: Only admins can delete variants, and the final active variant cannot be deleted.
       security:
         - bearerAuth: []
         - accessCookie: []
@@ -432,8 +432,8 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
       tags: [Add-ons]
-      summary: Delete an add-on
-      description: Deleting an add-on also removes its product attachments.
+      summary: Soft-delete an add-on
+      description: Soft-deleted add-ons are hidden from product details and can be restored later.
       security:
         - bearerAuth: []
         - accessCookie: []
@@ -478,11 +478,11 @@ paths:
       - name: tenantId
         in: path
         required: true
-        schema: { type: string }
+        schema: { type: string, example: tenant-demo-001 }
     get:
       tags: [Public Menu]
       summary: Get the public tenant menu
-      description: Returns active categories with active products, variants, and add-ons.
+      description: Returns active categories with active products and active variants. Add-ons are returned by product detail.
       responses:
         "200":
           description: Public menu retrieved
@@ -496,11 +496,11 @@ paths:
       - name: tenantId
         in: path
         required: true
-        schema: { type: string }
+        schema: { type: string, example: tenant-demo-001 }
       - name: productId
         in: path
         required: true
-        schema: { type: string }
+        schema: { type: string, example: product-demo-001 }
     get:
       tags: [Public Menu]
       summary: Get a public product detail
@@ -545,6 +545,7 @@ components:
         isActive: { type: boolean }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+        deletedAt: { type: [string, "null"], format: date-time }
     CreateCategory:
       type: object
       required: [name]
@@ -589,6 +590,7 @@ components:
         isDefault: { type: boolean }
         isActive: { type: boolean }
         displayOrder: { type: integer }
+        deletedAt: { type: [string, "null"], format: date-time }
     AddOn:
       type: object
       properties:
@@ -597,6 +599,7 @@ components:
         name: { type: string }
         price: { type: string }
         isActive: { type: boolean }
+        deletedAt: { type: [string, "null"], format: date-time }
     Product:
       type: object
       properties:

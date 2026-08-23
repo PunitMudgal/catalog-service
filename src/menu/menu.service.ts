@@ -24,7 +24,13 @@ export class MenuService {
         this.database
           .select()
           .from(categories)
-          .where(and(eq(categories.tenantId, tenantId), eq(categories.isActive, true)))
+          .where(
+            and(
+              eq(categories.tenantId, tenantId),
+              eq(categories.isActive, true),
+              isNull(categories.deletedAt),
+            ),
+          )
           .orderBy(categories.displayOrder, categories.name),
         this.database
           .select()
@@ -47,6 +53,7 @@ export class MenuService {
               eq(products.isActive, true),
               isNull(products.deletedAt),
               eq(productVariants.isActive, true),
+              isNull(productVariants.deletedAt),
             ),
           )
           .orderBy(productVariants.displayOrder, productVariants.label),
@@ -68,6 +75,7 @@ export class MenuService {
         ...product,
         variants: variantsByProduct.get(product.id) ?? [],
       };
+      if (productWithDetails.variants.length === 0) continue;
       const productList = productsByCategory.get(product.categoryId) ?? [];
       productList.push(productWithDetails);
       productsByCategory.set(product.categoryId, productList);
@@ -107,12 +115,16 @@ export class MenuService {
           eq(products.isActive, true),
           eq(categories.tenantId, tenantId),
           eq(categories.isActive, true),
+          isNull(categories.deletedAt),
           isNull(products.deletedAt),
         ),
       )
       .limit(1);
 
     if (!product) throw new PublicMenuNotFoundError("Product not found");
+    if (!(await this.isCategoryTreeActive(tenantId, product.product.categoryId))) {
+      throw new PublicMenuNotFoundError("Product not found");
+    }
 
     const [variants, addOnRows] = await Promise.all([
       this.database
@@ -122,6 +134,7 @@ export class MenuService {
           and(
             eq(productVariants.productId, productId),
             eq(productVariants.isActive, true),
+            isNull(productVariants.deletedAt),
           ),
         )
         .orderBy(productVariants.displayOrder, productVariants.label),
@@ -134,14 +147,50 @@ export class MenuService {
             eq(productAddOns.productId, productId),
             eq(addOns.tenantId, tenantId),
             eq(addOns.isActive, true),
+            isNull(addOns.deletedAt),
           ),
         ),
     ]);
+
+    if (variants.length === 0) {
+      throw new PublicMenuNotFoundError("Product not found");
+    }
 
     return {
       ...product.product,
       variants,
       addOns: addOnRows.map(({ addOn }) => addOn),
     };
+  }
+
+  private async isCategoryTreeActive(tenantId: string, categoryId: string) {
+    let currentId: string | null = categoryId;
+    const visited = new Set<string>();
+
+    while (currentId) {
+      if (visited.has(currentId)) return false;
+      visited.add(currentId);
+
+      const [category] = await this.database
+        .select({
+          parentId: categories.parentId,
+          isActive: categories.isActive,
+        })
+        .from(categories)
+        .where(
+          and(
+            eq(categories.id, currentId),
+            eq(categories.tenantId, tenantId),
+            eq(categories.isActive, true),
+            isNull(categories.deletedAt),
+          ),
+        )
+        .limit(1);
+
+      if (!category) return false;
+      currentId = category.parentId;
+    }
+
+    return true;
   }
 }

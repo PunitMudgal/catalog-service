@@ -47,6 +47,13 @@ export const createProductSchema = z
         message: "Variant labels must be unique",
       });
     }
+    if (product.variants.filter((variant) => variant.isDefault).length > 1) {
+      context.addIssue({
+        code: "custom",
+        path: ["variants"],
+        message: "A product can have only one default variant",
+      });
+    }
   });
 
 export const updateProductSchema = z
