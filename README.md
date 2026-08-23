@@ -20,6 +20,12 @@ auth-service HS256 signing secret.
 - `PATCH /:id` updates those fields; `PATCH /:id/availability` cascades activation to descendants and their products.
 - `DELETE /:id` deletes only categories with no child categories or products.
 
+Product management is available under `/api/v1/catalog/products`. Product creation
+requires at least one variant and can include `addOnIds`; product details return
+the product, its variants, and attached add-ons. Product deletion is a soft delete.
+Admins and managers can manage products, while staff can also use only the
+availability endpoint.
+
 ## API documentation
 
 Start the service with `pnpm run dev`, then open
