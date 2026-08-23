@@ -5,8 +5,10 @@ import { logger as honoLogger } from "hono/logger";
 import { HTTPException } from "hono/http-exception";
 import { logger } from "./utils/logger.js";
 import { Config } from "./config/index.js";
+import categoryRouter from "./category/category.router.js";
+import { openApiDocument, swaggerUi } from "./docs/swagger.js";
 
-const app = new Hono({ strict: false }).basePath("/api/v1");
+const app = new Hono({ strict: false }).basePath("/api/v1/catalog");
 
 app.use("*", honoLogger());
 app.use(
@@ -20,6 +22,10 @@ app.use(
 app.get("/", (c) => {
   return c.text("Hello, everybody!");
 });
+
+app.get("/openapi.yaml", openApiDocument);
+app.get("/docs", swaggerUi);
+app.route("/categories", categoryRouter);
 
 // global error handler
 app.onError((err, c) => {
