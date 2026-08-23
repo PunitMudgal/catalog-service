@@ -59,6 +59,7 @@ export const products = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
     deletedAt: timestamp("deleted_at"),
+    imagePublicId: text("image_public_id"),
   },
   (t) => [
     index("products_tenant_idx").on(t.tenantId),

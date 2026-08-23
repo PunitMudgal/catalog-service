@@ -5,6 +5,10 @@ import { db } from "../db/index.js";
 import { logger } from "../utils/logger.js";
 import { errorResponse, successResponse } from "../utils/response.js";
 import {
+  CloudinaryConfigurationError,
+  CloudinaryValidationError,
+} from "../utils/cloudinary.js";
+import {
   ProductConflictError,
   ProductNotFoundError,
   ProductService,
@@ -46,7 +50,10 @@ export class ProductController {
   create = async (c: Context) =>
     this.execute(
       c,
-      async () => this.service.create(this.tenantId(c), createProductSchema.parse(await c.req.json())),
+      async () => {
+        const { input, image } = await this.parseBody(c, createProductSchema);
+        return this.service.create(this.tenantId(c), input, image);
+      },
       "Product created successfully",
       201,
     );
@@ -56,10 +63,12 @@ export class ProductController {
       c,
       async () => {
         const { id } = productIdParamsSchema.parse(c.req.param());
+        const { input, image } = await this.parseBody(c, updateProductSchema);
         return this.service.update(
           this.tenantId(c),
           id,
-          updateProductSchema.parse(await c.req.json()),
+          input,
+          image,
         );
       },
       "Product updated successfully",
@@ -116,17 +125,94 @@ export class ProductController {
       if (error instanceof ProductConflictError) {
         return errorResponse(c, error.message, 409);
       }
-      if (error instanceof ProductValidationError || error instanceof ZodError) {
+      if (
+        error instanceof ProductValidationError ||
+        error instanceof CloudinaryValidationError ||
+        error instanceof ZodError
+      ) {
         return errorResponse(
           c,
           error instanceof ZodError ? "Invalid request body or parameters" : error.message,
           400,
         );
       }
+      if (error instanceof CloudinaryConfigurationError) {
+        return errorResponse(c, "Image upload is not configured", 500);
+      }
 
       logger.error({ error, path: c.req.path }, "Failed to process product request");
       return errorResponse(c, "Internal server error", 500);
     }
+  }
+
+  private async parseBody<T>(
+    c: Context,
+    schema: { parse(value: unknown): T },
+  ): Promise<{ input: T; image: File | null }> {
+    const contentType = c.req.header("Content-Type") ?? "";
+    if (!contentType.includes("multipart/form-data")) {
+      return { input: schema.parse(await c.req.json()), image: null };
+    }
+
+    const form = await c.req.formData();
+    const body: Record<string, unknown> = {};
+    const stringFields = ["name", "categoryId", "description", "imageUrl"];
+
+    for (const field of stringFields) {
+      const value = form.get(field);
+      if (value !== null && typeof value === "string" && value !== "") {
+        body[field] = value;
+      } else if (
+        value === "" &&
+        (field === "description" || field === "imageUrl")
+      ) {
+        body[field] = null;
+      }
+    }
+
+    const booleanFields = ["isVeg"];
+    for (const field of booleanFields) {
+      const value = form.get(field);
+      if (typeof value === "string" && value !== "") {
+        if (value !== "true" && value !== "false") {
+          throw new ZodError([
+            { code: "custom", path: [field], message: "Must be true or false" },
+          ]);
+        }
+        body[field] = value === "true";
+      }
+    }
+
+    const numberFields = ["displayOrder"];
+    for (const field of numberFields) {
+      const value = form.get(field);
+      if (typeof value === "string" && value !== "") body[field] = Number(value);
+    }
+
+    for (const field of ["variants", "addOnIds", "attributes"]) {
+      const value = form.get(field);
+      if (typeof value === "string" && value !== "") {
+        try {
+          body[field] = JSON.parse(value);
+        } catch {
+          throw new ZodError([
+            { code: "custom", path: [field], message: "Must be valid JSON" },
+          ]);
+        }
+      }
+    }
+
+    const imageValue = form.get("image");
+    if (imageValue !== null && !(imageValue instanceof File)) {
+      throw new ZodError([
+        { code: "custom", path: ["image"], message: "Must be an image file" },
+      ]);
+    }
+
+    return {
+      input: schema.parse(body),
+      image: imageValue instanceof File ? imageValue : null,
+    };
   }
 
   private httpStatus(status: number) {

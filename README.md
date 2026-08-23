@@ -26,6 +26,11 @@ the product, its variants, and attached add-ons. Product deletion is a soft dele
 Admins and managers can manage products, while staff can also use only the
 availability endpoint.
 
+Product create and update support `multipart/form-data` with an `image` file.
+Images must be image files smaller than 5 MB. Configure
+`CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` in
+the environment; JSON requests with an existing `imageUrl` are also supported.
+
 Variant management endpoints are available under `/api/v1/catalog/products/:productId/variants`
 and `/api/v1/catalog/variants/:id`. Admins and managers can create or edit variants,
 staff can change availability, and only admins can delete variants. A product must

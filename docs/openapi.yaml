@@ -191,6 +191,8 @@ paths:
         content:
           application/json:
             schema: { $ref: "#/components/schemas/CreateProduct" }
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/CreateProductForm" }
       responses:
         "201":
           description: Product created
@@ -231,6 +233,8 @@ paths:
         content:
           application/json:
             schema: { $ref: "#/components/schemas/UpdateProduct" }
+          multipart/form-data:
+            schema: { $ref: "#/components/schemas/UpdateProductForm" }
       responses:
         "200":
           description: Product updated
@@ -647,6 +651,24 @@ components:
               price: { type: number, minimum: 0 }
               isDefault: { type: boolean }
               displayOrder: { type: integer, minimum: 0 }
+    CreateProductForm:
+      type: object
+      required: [name, categoryId, variants]
+      description: Use JSON strings for variants, attributes, and addOnIds fields.
+      properties:
+        name: { type: string, example: Margherita Pizza }
+        categoryId: { type: string, example: category-demo-001 }
+        description: { type: string }
+        isVeg: { type: string, enum: ["true", "false"] }
+        displayOrder: { type: string, example: "0" }
+        attributes: { type: string, example: '{"spiceLevel":"medium"}' }
+        addOnIds: { type: string, example: '["addon-demo-001"]' }
+        variants:
+          type: string
+          example: '[{"label":"Regular","price":12.5,"isDefault":true}]'
+        image:
+          type: string
+          format: binary
     UpdateProduct:
       type: object
       minProperties: 1
@@ -657,6 +679,17 @@ components:
         imageUrl: { type: [string, "null"], format: uri }
         categoryId: { type: string }
         isVeg: { type: [boolean, "null"] }
+    UpdateProductForm:
+      type: object
+      description: Send only fields being changed. The image field replaces the current image.
+      properties:
+        name: { type: string }
+        description: { type: string }
+        imageUrl: { type: string, format: uri }
+        isVeg: { type: string, enum: ["true", "false"] }
+        image:
+          type: string
+          format: binary
     ProductResponse:
       type: object
       properties:

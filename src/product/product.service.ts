@@ -10,12 +10,19 @@ import type {
   CreateProductInput,
   UpdateProductInput,
 } from "./product.validation.js";
+import {
+  deleteCloudinaryImage,
+  uploadProductImage,
+  type UploadedImage,
+} from "../utils/cloudinary.js";
 
 type Database = typeof import("../db/index.js").db;
 
 export class ProductNotFoundError extends Error {}
 export class ProductConflictError extends Error {}
 export class ProductValidationError extends Error {}
+
+type ProductImage = File | null;
 
 export class ProductService {
   constructor(private readonly database: Database) {}
@@ -64,82 +71,135 @@ export class ProductService {
     };
   }
 
-  async create(tenantId: string, input: CreateProductInput) {
+  async create(
+    tenantId: string,
+    input: CreateProductInput,
+    image: ProductImage = null,
+  ) {
     await this.assertCategoryBelongsToTenant(tenantId, input.categoryId);
     const selectedAddOns = await this.getTenantAddOns(tenantId, input.addOnIds ?? []);
+    const productId = crypto.randomUUID();
+    let uploadedImage: UploadedImage | null = null;
 
-    const result = await this.database.transaction(async (tx) => {
-      const [product] = await tx
-        .insert(products)
-        .values({
-          tenantId,
-          categoryId: input.categoryId,
-          name: input.name,
-          description: input.description ?? null,
-          imageUrl: input.imageUrl ?? null,
-          isVeg: input.isVeg ?? null,
-          displayOrder: input.displayOrder ?? 0,
-          attributes: input.attributes,
-        })
-        .returning();
-
-      if (!product) throw new ProductConflictError("Product could not be created");
-
-      const variants = await tx
-        .insert(productVariants)
-        .values(
-          input.variants.map((variant) => ({
-            productId: product.id,
-            label: variant.label,
-            price: String(variant.price),
-            isDefault: variant.isDefault ?? false,
-            displayOrder: variant.displayOrder ?? 0,
-          })),
-        )
-        .returning();
-
-      if (input.addOnIds?.length) {
-        await tx.insert(productAddOns).values(
-          input.addOnIds.map((addOnId) => ({
-            productId: product.id,
-            addOnId,
-          })),
-        );
+    try {
+      if (image) {
+        uploadedImage = await uploadProductImage(image, tenantId, productId);
       }
 
-      return { product, variants };
-    });
+      const result = await this.database.transaction(async (tx) => {
+        const [product] = await tx
+          .insert(products)
+          .values({
+            id: productId,
+            tenantId,
+            categoryId: input.categoryId,
+            name: input.name,
+            description: input.description ?? null,
+            imageUrl: uploadedImage?.secureUrl ?? input.imageUrl ?? null,
+            imagePublicId: uploadedImage?.publicId ?? null,
+            isVeg: input.isVeg ?? null,
+            displayOrder: input.displayOrder ?? 0,
+            attributes: input.attributes,
+          })
+          .returning();
 
-    return { ...result.product, variants: result.variants, addOns: selectedAddOns };
+        if (!product) throw new ProductConflictError("Product could not be created");
+
+        const variants = await tx
+          .insert(productVariants)
+          .values(
+            input.variants.map((variant) => ({
+              productId: product.id,
+              label: variant.label,
+              price: String(variant.price),
+              isDefault: variant.isDefault ?? false,
+              displayOrder: variant.displayOrder ?? 0,
+            })),
+          )
+          .returning();
+
+        if (input.addOnIds?.length) {
+          await tx.insert(productAddOns).values(
+            input.addOnIds.map((addOnId) => ({
+              productId: product.id,
+              addOnId,
+            })),
+          );
+        }
+
+        return { product, variants };
+      });
+
+      return { ...result.product, variants: result.variants, addOns: selectedAddOns };
+    } catch (error) {
+      if (uploadedImage) {
+        try {
+          await deleteCloudinaryImage(uploadedImage.publicId);
+        } catch {
+          // Keep the original database or upload error.
+        }
+      }
+      throw error;
+    }
   }
 
-  async update(tenantId: string, id: string, input: UpdateProductInput) {
-    await this.findProduct(tenantId, id);
+  async update(
+    tenantId: string,
+    id: string,
+    input: UpdateProductInput,
+    image: ProductImage = null,
+  ) {
+    const current = await this.findProduct(tenantId, id);
     if (input.categoryId) {
       await this.assertCategoryBelongsToTenant(tenantId, input.categoryId);
     }
 
-    const [product] = await this.database
-      .update(products)
-      .set({
-        ...(input.name === undefined ? {} : { name: input.name }),
-        ...(input.description === undefined ? {} : { description: input.description }),
-        ...(input.imageUrl === undefined ? {} : { imageUrl: input.imageUrl }),
-        ...(input.categoryId === undefined ? {} : { categoryId: input.categoryId }),
-        ...(input.isVeg === undefined ? {} : { isVeg: input.isVeg }),
-        updatedAt: new Date(),
-      })
-      .where(
-        and(
-          eq(products.tenantId, tenantId),
-          eq(products.id, id),
-          isNull(products.deletedAt),
-        ),
-      )
-      .returning();
+    let uploadedImage: UploadedImage | null = null;
+    try {
+      if (image) uploadedImage = await uploadProductImage(image, tenantId, id);
 
-    if (!product) throw new ProductNotFoundError("Product not found");
-    return product;
+      const [product] = await this.database
+        .update(products)
+        .set({
+          ...(input.name === undefined ? {} : { name: input.name }),
+          ...(input.description === undefined ? {} : { description: input.description }),
+          ...(image
+            ? { imageUrl: uploadedImage?.secureUrl, imagePublicId: uploadedImage?.publicId }
+            : input.imageUrl === undefined
+              ? {}
+              : { imageUrl: input.imageUrl }),
+          ...(input.categoryId === undefined ? {} : { categoryId: input.categoryId }),
+          ...(input.isVeg === undefined ? {} : { isVeg: input.isVeg }),
+          updatedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(products.tenantId, tenantId),
+            eq(products.id, id),
+            isNull(products.deletedAt),
+          ),
+        )
+        .returning();
+
+      if (!product) throw new ProductNotFoundError("Product not found");
+      if (uploadedImage && current.imagePublicId) {
+        try {
+          await deleteCloudinaryImage(current.imagePublicId);
+        } catch {
+          // The new image is already saved; cleanup can be retried separately.
+        }
+      }
+      return product;
+    } catch (error) {
+      if (uploadedImage && uploadedImage.publicId !== current.imagePublicId) {
+        try {
+          await deleteCloudinaryImage(uploadedImage.publicId);
+        } catch {
+          // Keep the original database or upload error.
+        }
+      }
+      throw error;
+    }
   }
 
   async setAvailability(tenantId: string, id: string, isActive: boolean) {
