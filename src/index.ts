@@ -11,8 +11,9 @@ import productRouter from "./product/product.router.js";
 import variantRouter from "./variant/variant.router.js";
 import addOnRouter from "./add-on/add-on.router.js";
 import menuRouter from "./menu/menu.router.js";
+import healthRoutes from "./health/health.router.js";
 
-const app = new Hono({ strict: false }).basePath("/api/v1/catalog");
+const app = new Hono({ strict: false }).basePath("/api/v1");
 
 app.use("*", honoLogger());
 app.use(
@@ -34,6 +35,7 @@ app.get("/", (c) => {
 
 app.get("/openapi.yaml", openApiDocument);
 app.get("/docs", swaggerUi);
+app.route("/health", healthRoutes);
 app.route("/categories", categoryRouter);
 app.route("/products", productRouter);
 app.route("/", variantRouter);

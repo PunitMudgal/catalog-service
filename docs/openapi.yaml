@@ -13,6 +13,7 @@ tags:
   - name: Variants
   - name: Add-ons
   - name: Public Menu
+  - name: Health
 paths:
   /:
     get:
@@ -517,6 +518,61 @@ paths:
               schema: { $ref: "#/components/schemas/ProductResponse" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "404": { $ref: "#/components/responses/NotFound" }
+  /health/live:
+    get:
+      tags: [Health]
+      summary: Check whether the application is alive
+      responses:
+        "200":
+          description: Application is alive
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthLiveResponse" }
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Check whether the service is ready
+      responses:
+        "200":
+          description: All dependencies are ready
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
+        "503":
+          description: A dependency is unavailable
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
+  /health:
+    get:
+      tags: [Health]
+      summary: Get application and dependency health
+      responses:
+        "200":
+          description: All services are healthy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
+        "503":
+          description: One or more services are unhealthy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
+  /health/database:
+    get:
+      tags: [Health]
+      summary: Check database health
+      responses:
+        "200":
+          description: Database is healthy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
+        "503":
+          description: Database is unhealthy
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthResponse" }
 components:
   securitySchemes:
     bearerAuth:
@@ -809,6 +865,38 @@ components:
             productId: { type: string }
             addOnId: { type: string }
         status: { type: integer, const: 201 }
+    HealthLiveResponse:
+      type: object
+      properties:
+        success: { type: boolean, const: true }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            service: { type: string, const: application }
+            status: { type: string, const: healthy }
+        status: { type: integer, const: 200 }
+    HealthResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data:
+          type: object
+          properties:
+            status: { type: string, enum: [healthy, unhealthy] }
+            services:
+              type: object
+              additionalProperties:
+                $ref: "#/components/schemas/ServiceCheck"
+        status: { type: integer, enum: [200, 503] }
+    ServiceCheck:
+      type: object
+      required: [status, message]
+      properties:
+        status: { type: string, enum: [healthy, unhealthy] }
+        message: { type: string }
+        latencyMs: { type: integer, minimum: 0 }
     ErrorResponse:
       type: object
       required: [success, message, status]

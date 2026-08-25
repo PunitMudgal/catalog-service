@@ -10,7 +10,7 @@ import {
 } from "./schema.js";
 
 // Fixed tenant for this seed run
-const TENANT_ID = "d82f2c93-8af9-448a-9f19-b050f618550d";
+const TENANT_ID = "fbb3649a-5ef9-4c4d-be0d-46aecbdb2061";
 
 // ---------------------------------------------------------------------------
 // Shape helpers — keep the seed data declarative, insert logic does the work

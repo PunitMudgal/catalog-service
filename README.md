@@ -49,6 +49,13 @@ Public menu endpoints:
 
 These endpoints do not require authentication.
 
+Health endpoints are available under `/api/v1/catalog/health`:
+
+- `/live` checks that the application process is running.
+- `/ready` checks application and database readiness.
+- `/` returns the overall application and database health.
+- `/database` checks only the database connection.
+
 ## API documentation
 
 Start the service with `pnpm run dev`, then open
