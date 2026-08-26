@@ -14,6 +14,40 @@ export class VariantValidationError extends Error {}
 export class VariantService {
   constructor(private readonly database: Database) {}
 
+  async list(tenantId: string) {
+    return this.database
+      .select({ variant: productVariants, product: products })
+      .from(productVariants)
+      .innerJoin(products, eq(productVariants.productId, products.id))
+      .where(
+        and(
+          eq(products.tenantId, tenantId),
+          isNull(products.deletedAt),
+          isNull(productVariants.deletedAt),
+        ),
+      )
+      .orderBy(productVariants.displayOrder, productVariants.label);
+  }
+
+  async getById(tenantId: string, id: string) {
+    const [result] = await this.database
+      .select({ variant: productVariants, product: products })
+      .from(productVariants)
+      .innerJoin(products, eq(productVariants.productId, products.id))
+      .where(
+        and(
+          eq(productVariants.id, id),
+          eq(products.tenantId, tenantId),
+          isNull(products.deletedAt),
+          isNull(productVariants.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!result) throw new VariantNotFoundError("Variant not found");
+    return result.variant;
+  }
+
   async create(tenantId: string, productId: string, input: CreateVariantInput) {
     await this.findProduct(tenantId, productId);
     await this.ensureLabelIsAvailable(productId, input.label);

@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 import { db } from "../db/index.js";
 import { logger } from "../utils/logger.js";
 import { errorResponse, successResponse } from "../utils/response.js";
@@ -72,6 +72,23 @@ export class VariantController {
       204,
     );
 
+  publicList = async (c: Context) =>
+    this.execute(
+      c,
+      () => this.service.list(this.urlTenantId(c)),
+      "Variants retrieved successfully",
+    );
+
+  publicGetById = async (c: Context) =>
+    this.execute(
+      c,
+      () => {
+        const { id } = variantIdParamsSchema.parse(c.req.param());
+        return this.service.getById(this.urlTenantId(c), id);
+      },
+      "Variant retrieved successfully",
+    );
+
   private tenantId(c: Context) {
     const tenantId = c.get("user").tenantId;
     if (!tenantId) {
@@ -80,6 +97,10 @@ export class VariantController {
       });
     }
     return tenantId;
+  }
+
+  private urlTenantId(c: Context) {
+    return z.string().trim().min(1).parse(c.req.param("tenantId"));
   }
 
   private async execute(

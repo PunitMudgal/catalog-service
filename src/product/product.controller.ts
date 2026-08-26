@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 import { db } from "../db/index.js";
 import { logger } from "../utils/logger.js";
 import { errorResponse, successResponse } from "../utils/response.js";
@@ -97,6 +97,28 @@ export class ProductController {
       204,
     );
 
+  publicList = async (c: Context) =>
+    this.execute(
+      c,
+      () => {
+        const { categoryId } = productListQuerySchema.parse({
+          categoryId: c.req.query("categoryId"),
+        });
+        return this.service.list(this.urlTenantId(c), categoryId);
+      },
+      "Products retrieved successfully",
+    );
+
+  publicGetById = async (c: Context) =>
+    this.execute(
+      c,
+      () => {
+        const { id } = productIdParamsSchema.parse(c.req.param());
+        return this.service.getById(this.urlTenantId(c), id);
+      },
+      "Product retrieved successfully",
+    );
+
   private tenantId(c: Context) {
     const tenantId = c.get("user").tenantId;
     if (!tenantId) {
@@ -105,6 +127,10 @@ export class ProductController {
       });
     }
     return tenantId;
+  }
+
+  private urlTenantId(c: Context) {
+    return z.string().trim().min(1).parse(c.req.param("tenantId"));
   }
 
   private async execute(

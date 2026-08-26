@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { ZodError } from "zod";
+import { ZodError, z } from "zod";
 import { db } from "../db/index.js";
 import { logger } from "../utils/logger.js";
 import { errorResponse, successResponse } from "../utils/response.js";
@@ -25,6 +25,16 @@ export class AddOnController {
       c,
       () => this.service.list(this.tenantId(c)),
       "Add-ons retrieved successfully",
+    );
+
+  getById = async (c: Context) =>
+    this.execute(
+      c,
+      () => {
+        const { id } = addOnIdParamsSchema.parse(c.req.param());
+        return this.service.getById(this.tenantId(c), id);
+      },
+      "Add-on retrieved successfully",
     );
 
   create = async (c: Context) =>
@@ -88,6 +98,23 @@ export class AddOnController {
       204,
     );
 
+  publicList = async (c: Context) =>
+    this.execute(
+      c,
+      () => this.service.list(this.urlTenantId(c)),
+      "Add-ons retrieved successfully",
+    );
+
+  publicGetById = async (c: Context) =>
+    this.execute(
+      c,
+      () => {
+        const { id } = addOnIdParamsSchema.parse(c.req.param());
+        return this.service.getById(this.urlTenantId(c), id);
+      },
+      "Add-on retrieved successfully",
+    );
+
   private tenantId(c: Context) {
     const tenantId = c.get("user").tenantId;
     if (!tenantId) {
@@ -95,6 +122,11 @@ export class AddOnController {
         message: "A tenant is required for this operation",
       });
     }
+    return tenantId;
+  }
+
+  private urlTenantId(c: Context) {
+    const tenantId = z.string().trim().min(1).parse(c.req.param("tenantId"));
     return tenantId;
   }
 

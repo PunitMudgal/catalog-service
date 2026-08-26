@@ -12,6 +12,7 @@ import variantRouter from "./variant/variant.router.js";
 import addOnRouter from "./add-on/add-on.router.js";
 import menuRouter from "./menu/menu.router.js";
 import healthRoutes from "./health/health.router.js";
+import publicRouter from "./public/public.router.js";
 
 const app = new Hono({ strict: false }).basePath("/api/v1");
 
@@ -19,12 +20,7 @@ app.use("*", honoLogger());
 app.use(
   "*",
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:8000",
-      "http://localhost:8001",
-      Config.frontendURL,
-    ],
+    origin: ["http://localhost:3000", Config.frontendURL],
     credentials: true,
   }),
 );
@@ -41,6 +37,7 @@ app.route("/products", productRouter);
 app.route("/", variantRouter);
 app.route("/", addOnRouter);
 app.route("/", menuRouter);
+app.route("/:tenantId", publicRouter);
 
 // global error handler
 app.onError((err, c) => {

@@ -26,6 +26,23 @@ export class AddOnService {
       .orderBy(addOns.name);
   }
 
+  async getById(tenantId: string, id: string) {
+    const [addOn] = await this.database
+      .select()
+      .from(addOns)
+      .where(
+        and(
+          eq(addOns.id, id),
+          eq(addOns.tenantId, tenantId),
+          isNull(addOns.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!addOn) throw new AddOnNotFoundError("Add-on not found");
+    return addOn;
+  }
+
   async create(tenantId: string, input: CreateAddOnInput) {
     const [addOn] = await this.database
       .insert(addOns)
