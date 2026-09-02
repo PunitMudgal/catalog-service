@@ -2,9 +2,9 @@ openapi: 3.1.0
 info:
   title: Catalog Service API
   version: 1.0.0
-  description: Tenant-scoped category management API.
+  description: Tenant-scoped catalog management and public read APIs.
 servers:
-  - url: /api/v1/catalog
+  - url: /api/v1
     description: Current catalog service host
 tags:
   - name: Catalog
@@ -13,6 +13,7 @@ tags:
   - name: Variants
   - name: Add-ons
   - name: Public Menu
+  - name: Public Catalog
   - name: Health
 paths:
   /:
@@ -480,10 +481,7 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
   /{tenantId}/menu:
     parameters:
-      - name: tenantId
-        in: path
-        required: true
-        schema: { type: string, example: tenant-demo-001 }
+      - $ref: "#/components/parameters/TenantId"
     get:
       tags: [Public Menu]
       summary: Get the public tenant menu
@@ -498,10 +496,7 @@ paths:
         "400": { $ref: "#/components/responses/BadRequest" }
   /{tenantId}/products/{productId}:
     parameters:
-      - name: tenantId
-        in: path
-        required: true
-        schema: { type: string, example: tenant-demo-001 }
+      - $ref: "#/components/parameters/TenantId"
       - name: productId
         in: path
         required: true
@@ -516,6 +511,122 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ProductResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /{tenantId}/categories:
+    parameters:
+      - $ref: "#/components/parameters/TenantId"
+    get:
+      tags: [Public Catalog]
+      summary: List categories for a tenant
+      description: Public read. No authentication required. Soft-deleted categories are excluded.
+      responses:
+        "200":
+          description: Categories retrieved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CategoryListResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /{tenantId}/categories/{id}:
+    parameters:
+      - $ref: "#/components/parameters/TenantId"
+      - $ref: "#/components/parameters/CategoryId"
+    get:
+      tags: [Public Catalog]
+      summary: Get a category by id
+      description: Public read. No authentication required.
+      responses:
+        "200":
+          description: Category retrieved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CategoryResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /{tenantId}/products:
+    parameters:
+      - $ref: "#/components/parameters/TenantId"
+    get:
+      tags: [Public Catalog]
+      summary: List products for a tenant
+      description: Public read. No authentication required. Soft-deleted products are excluded. Optionally filter by categoryId.
+      parameters:
+        - name: categoryId
+          in: query
+          required: false
+          schema: { type: string }
+          description: When set, only products in this category are returned
+      responses:
+        "200":
+          description: Products retrieved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ProductListResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /{tenantId}/add-ons:
+    parameters:
+      - $ref: "#/components/parameters/TenantId"
+    get:
+      tags: [Public Catalog]
+      summary: List add-ons for a tenant
+      description: Public read. No authentication required. Soft-deleted add-ons are excluded.
+      responses:
+        "200":
+          description: Add-ons retrieved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AddOnListResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /{tenantId}/add-ons/{id}:
+    parameters:
+      - $ref: "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Public Catalog]
+      summary: Get an add-on by id
+      description: Public read. No authentication required.
+      responses:
+        "200":
+          description: Add-on retrieved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AddOnResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /{tenantId}/variants:
+    parameters:
+      - $ref: "#/components/parameters/TenantId"
+    get:
+      tags: [Public Catalog]
+      summary: List variants for a tenant
+      description: Public read. No authentication required. Soft-deleted variants are excluded.
+      responses:
+        "200":
+          description: Variants retrieved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VariantListResponse" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+  /{tenantId}/variants/{id}:
+    parameters:
+      - $ref: "#/components/parameters/TenantId"
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [Public Catalog]
+      summary: Get a variant by id
+      description: Public read. No authentication required.
+      responses:
+        "200":
+          description: Variant retrieved
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VariantResponse" }
         "400": { $ref: "#/components/responses/BadRequest" }
         "404": { $ref: "#/components/responses/NotFound" }
   /health/live:
@@ -584,6 +695,14 @@ components:
       in: cookie
       name: access_token
   parameters:
+    TenantId:
+      name: tenantId
+      in: path
+      required: true
+      example: fbb3649a-5ef9-4c4d-be0d-46aecbdb2061
+      schema:
+        type: string
+        example: fbb3649a-5ef9-4c4d-be0d-46aecbdb2061
     CategoryId:
       name: id
       in: path
@@ -823,6 +942,15 @@ components:
         message: { type: string }
         data: { $ref: "#/components/schemas/Variant" }
         status: { type: integer }
+    VariantListResponse:
+      type: object
+      properties:
+        success: { type: boolean, const: true }
+        message: { type: string }
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/Variant" }
+        status: { type: integer, const: 200 }
     CreateAddOn:
       type: object
       required: [name, price]
